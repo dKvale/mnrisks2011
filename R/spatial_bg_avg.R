@@ -21,7 +21,7 @@ spatial_bg_avg <- function(values       = NULL,
   if(is.null(values)) stop("Incorrect values passed to function. Set `value` to the column containing the modeling results")
   
   #-- Load receptor area fractions for each block group 
-  rec_frx <- receptor_bg_areas()
+  rec_frx <- receptor_bg_areas() %>% ungroup()
   
   #-- Filter to selected block groups
   if(!is.null(bg_geoids)) {
@@ -43,14 +43,14 @@ spatial_bg_avg <- function(values       = NULL,
   
 
   #-- Set area weight of missing receptors to zero
-  rec_frx$area_wts   <- ifelse(is.na(rec_frx$mean_value), 0, rec_frx$area_wts)
+  rec_frx$area_wts   <- ifelse(is.na(rec_frx$mean_value), 0, rec_frx$area_wt)
   
  
   #-- Calculate weighted block group averages using area fractions
   bg_avg <- rec_frx %>% 
             dplyr::group_by(geoid) %>% 
-            dplyr::summarise(sum_of_area_wts = sum(area_wts, na.rm = TRUE), 
-                             mean_value      = sum(area_wts * mean_value, na.rm = TRUE) / sum_of_area_wts)
+            dplyr::summarise(sum_of_area_wts = sum(area_wt, na.rm = TRUE), 
+                             mean_value      = sum(area_wt * mean_value, na.rm = TRUE) / sum_of_area_wts)
     
   #-- Set value of missing block groups to zero
   #bg_avg$value_avg  <- ifelse(is.na(bg_avg$value_avg), 0, bg_avg$value_avg)
