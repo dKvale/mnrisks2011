@@ -4,20 +4,24 @@
 \alias{spatial_bg_avg}
 \title{spatial_bg_avg}
 \usage{
-spatial_bg_avg(data = df, values = NULL, receptor = "receptor")
+spatial_bg_avg(values = NULL, receptors = "receptor", bg_geoids = NULL,
+  results_only = FALSE)
 }
 \arguments{
-\item{data}{Data frame with lat / long coordinates and values for averaging.}
+\item{values}{Receptor modeling results for averaging.}
+
+\item{receptors}{MNRISKS receptor number.}
+
+\item{bg_geoids}{Census block group geoid numbers to include in results. Default returns all block groups.}
 }
 \description{
-Find the spatial block group average, weighting each receptor by its spatial coverage of the block group
+Find the spatial block group average, weighting each receptor by its spatial coverage of the block group.
 }
 \examples{
 # For all block groups
-bg_avg <- spatial_bg_avg(data     = df, 
-                         values   = "cancer_risk",
-                         receptor = "receptor"
-                         )
+bg_avg <- spatial_bg_avg(values    = df$concentration, 
+                         receptors = df$receptors)
+                         
 }
 \keyword{average}
 \keyword{block}

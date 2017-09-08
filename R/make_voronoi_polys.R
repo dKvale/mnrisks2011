@@ -11,57 +11,73 @@
 # 
 make_voronoi_polys <- function() {
   
-  library(tigris)
-  library(spatstat)
-  library(spatstat.utils)
   library(sp)
   library(rgdal)
-  library(rgeos)
-  library(deldir)
-  library(raster)
   library(dplyr)
+  library(sf)
+  library(tigris)
 
-  source("tess2SP.R")
+  
+  # Create boundary box polygon
+  bbox_polygon <- function(x) {
+    bb <- sf::st_bbox(x)
+    
+    p <- matrix(
+      c(bb["xmin"], bb["ymin"], 
+        bb["xmin"], bb["ymax"],
+        bb["xmax"], bb["ymax"], 
+        bb["xmax"], bb["ymin"], 
+        bb["xmin"], bb["ymin"]),
+      ncol = 2, byrow = T
+    )
+    
+    sf::st_polygon(list(p))
+  }
   
   # Load county shapefiles
   counties <- counties(state = 'MN', cb = TRUE, resolution = '5m')
   #counties20 <- counties(state = 'MN', cb = TRUE, resolution = '20m')
   
-  # Save projection info
-  county_proj <- proj4string(counties)
+  # Convert to sf
+  counties <- st_as_sf(counties)
+  
+  county_epsg <- st_crs(counties)$epsg
+  county_proj <- st_crs(counties)$proj4string
+  county_crs  <- st_crs(counties)
 
-  coordinates(counties)[1:5]
-  
-  
   # Load block groups
-  bgs <- block_groups(state = 'MN', cb = F) # Detailed file
+  bgs <- block_groups(state = 'MN', cb = T, year = 2015) # Detailed file
   #bgs2 <- block_groups(state = 'MN', cb = T)
-  #bgs <- mnrisks2011::bg_shape()
+  #bgs  <- mnrisks2011::bg_shape()
   
   bg_ids <- bgs$GEOID
   
-  bg_neighbors <- gTouches(bgs, byid = T)
-  
-  proj4string(bgs)  <- county_proj
-  
-
-  # Load receptors
-  receptors <- mnrisks2011::receptors()
-  #coordinates(receptors) <- ~Long + Lat
-  #proj4string(receptors) <- county_proj
-
  
-  # Create polygons for each block group 
-  # Use poly-intersection from 'rgdal'
+  # Convert to sf
+  bgs <- st_as_sf(bgs)
+  
+  bgs_crs <- st_crs(bgs)
+  
+  
+  # Find block group neighbors
+  bg_neighbors <- st_touches(bgs)
+  
+  # Load receptors
+  receptors <- receptors()
+ 
+  # For missing block group: 271090017024
   bg <- bgs$GEOID[1]
   
-  # For missing block group: 271090017024
   i <- grep(271090017024, bgs$GEOID)
   
   # Fewest receptors
   #i <- grep(270990006001, bgs$GEOID)
-  
-  #i <- grep(271450116001, bgs$GEOID)
+  i <- grep(270531093001, bgs$GEOID)
+  i <- grep(271617902003, bgs$GEOID)
+  i <- grep(270717905003, bgs$GEOID)
+
+
+
   
   # Blank table for receptor fractions
   receptor_area_fractions <- data_frame()
@@ -71,119 +87,155 @@ make_voronoi_polys <- function() {
     
     bg <- bgs$GEOID[i]
     
+    print(i)
     print(bg)
     
-    # Create boundary for selected block group
-    # that includes neighboring block groups
-    bg_sub <- subset(bgs, GEOID %in% c(bg, bg_ids[bg_neighbors[i, ]]))
+    # Create boundary for selected block group that includes neighboring block groups
+    neighbors <- unlist(c(bg_neighbors[[i]], bg_neighbors[bg_neighbors[[i]]]))
     
-    # Create "owin" county file for spatstat 
-    #bg_region <- as(counties, "owin")  
-    #plot(bg_sub)
-    
-    bg_region <- as(bg_sub, "owin")  
+    bg_sub <- subset(bgs, GEOID %in% c(bg, bg_ids[neighbors])) 
+ 
     
     # Filter receptors to selected block group and neighbors
-    bg_recepts <- subset(receptors,
-                         geoid %in% c(bg, bg_ids[bg_neighbors[i, ]]))
+    sub_recepts <- subset(receptors, geoid %in% bg_sub$GEOID)
     
-    bg_recepts$row_id <- 1:nrow(bg_recepts)
-   
-    # Create "ppp" file for rgdal
-    bg_ppp <- ppp(bg_recepts$long, bg_recepts$lat, window = bg_region)
+    rec_nums    <- sub_recepts$receptor
     
-    plot(bg_ppp)
+    bg_recepts  <- sub_recepts[ , c("long", "lat")] %>%
+                   as.matrix() %>%
+                   st_multipoint() %>%
+                   st_sfc() %>%
+                   st_set_crs(4269)
+    
+    bg_recepts  <- st_sf(data_frame(receptor = rec_nums, 
+                                    geom = st_cast(bg_recepts, to = "POINT")))
+
+    
+    bg_recepts_utm <- sub_recepts[ , c("utm_x", "utm_y")] %>%
+                      as.matrix() %>%
+                      st_multipoint() %>%
+                      st_sfc() %>%
+                      st_set_crs(26915)    
+ 
     
     # Create voronoi polygons
-    v_polys <- deldir(bg_recepts$long, bg_recepts$lat)
+    v_polys <- st_voronoi(bg_recepts_utm) %>% st_cast()
     
-    plot(bg_sub)
-    
-    plot(v_polys, add = T)
-    
-    v_polys <- dirichlet(bg_ppp)
-    
-    plot(bg_sub)
-    plot(subset(bgs, GEOID == bg), add = T, col ="blue")
-    plot(v_polys, add = T)
-    
-    #text(bg_recepts$lat ~ bg_recepts$long, labels = bg_recepts$row_id, col = "red")
-    
-    text(bg_recepts$lat ~ bg_recepts$long, labels = bg_recepts$receptor, col = "blue", cex = 0.6)
-    
-    points(bg_recepts$lat ~ bg_recepts$long, col = "black")
-         
-    v_poly <- tess2SP(v_polys)
-    
-    plot(v_poly)
-    
-    names(v_poly)
-    
-    # Remove overlaps
-    v_poly <- gBuffer(v_poly, byid=TRUE, width = 0.0000001)
-    
-    proj4string(v_poly) <- county_proj
-    
-    # Restrict to selected blockgroup only
-    bg_sub <- subset(bgs, GEOID %in% bg)
-    
-    plot(bg_sub)
-    
-    v_poly <- gIntersection(v_poly, bg_sub, byid = T)
-    
-    print(plot(v_poly))
+    if(F) { plot(v_polys, col = 0) }
     
     
-    # Assign receptor numbers and polygon areas
-    v_poly_ids <- sapply(names(v_poly), 
-                         function(x) as.numeric(strsplit(x, " ")[[1]][1]),
-                         USE.NAMES = F)
+    # Switch projection
+    #v_polys <- v_polys %>% st_transform(4269)
     
-    #crs(v_poly)
-    area(v_poly)
     
-    v_poly_df <- data.frame(geoid   = bg,
-                            receptor = bg_recepts[v_poly_ids, ]$receptor,
-                            area     = area(v_poly))
+    # Add receptor number labels
+    bg_recepts <- st_sf(data_frame(receptor = rec_nums, 
+                                   geom = st_cast(bg_recepts_utm, to = "POINT")))
     
-    v_poly_df$area_frx <- v_poly_df$area / sum(v_poly_df$area, na.rm = T) 
+    v_recs <- v_polys %>% st_contains(bg_recepts)
     
-    sub_recepts <- bg_recepts[v_poly_df$geoid, ]
+    v_polys <- st_sf(data_frame(receptor = rec_nums[unlist(v_recs)], 
+                                geom     = v_polys))
     
-    print(text(getSpPPolygonsLabptSlots(v_poly), labels = v_poly_df$receptor, cex = 0.8))
-    
-    # Assign row names for spatial join
-    if(FALSE) {
-      row.names(v_poly_df) <- row.names(v_poly)
+    if(F){
+    for(x in 1:5){
+      plot(st_geometry(v_polys)[i], col = "steelblue")
       
-      v_poly <- SpatialPolygonsDataFrame(v_poly, v_poly_df)
-      
-      plot(v_poly)
-      
-      v_poly@data
-      
-      bg_voronois  <- spRbind(cnty_grid, state_grid)
+      plot(st_geometry(subset(bg_recepts, receptor == v_polys$receptor[i])), pch = 19, col = "orange", cex = 2, add = T)
+    
+    }
+      }
+    
+    # Find boundary box
+    bg_poly <- subset(bg_sub, GEOID %in% bg)
+    
+    #box <- st_sfc(bbox_polygon(bg_poly)) %>% st_set_crs(4269) %>% st_transform(26915) %>% st_cast()
+    
+    bg_poly <- bg_poly %>% st_set_crs(4269) %>% st_transform(26915) %>% st_cast()
+    
+    #v_polys <- st_intersection(st_cast(v_polys), box)
+    v_poly <- st_intersection(st_cast(v_polys), bg_poly) %>% st_cast()
+    
+    
+    # Plot visuals
+    if(F) {
+    plot(st_geometry(st_transform(bg_sub, 26915)), col = "steelblue")
+    
+    plot(st_geometry(bg_poly), col = 0, add = T)
+    
+    plot(v_poly, col = NA, add = T)
+    
+    plot(bg_recepts, col = "orange", pch = 19, cex = 0.4, add = T)
+    
     }
     
+    # Get receptor numbers for polygons
+    v_recs    <- subset(bg_recepts, receptor %in% v_poly$receptor) %>% st_geometry()
+    
+    v_recs_df <- subset(receptors, receptor %in% v_poly$receptor)
+    
+    # Clear plot window
+    plot(1:5, type = "n")
+    
+    flush.console()
+    
+    
+    # Plot visual check
+    plot(v_recs, col = "orange", pch = 19, cex = .8)
+    
+    text(v_recs_df$utm_x * (1 - .000002), 
+         v_recs_df$utm_y * (1 + .000004), 
+         labels = v_recs_df$receptor, 
+         cex    = .6)
+    
+    plot(st_geometry(v_poly), col = NA, add =T)
+    
+    title(bg)
+    
+    flush.console()
+    
+    Sys.sleep(0.01)
+    
+    # Assign polygon areas
+    v_poly$area <- st_area(v_poly) 
+    
+    v_poly$area_frx <- v_poly$area / sum(v_poly$area, na.rm = T) 
+    
     # Collapse data frame to one row per block group
-    v_summary <- summarize(v_poly_df,
-                           geoid     = geoid [1],
-                           receptors = list(receptor),
-                           area_wts  = list(area_frx))
+    v_summary <- tibble(geoid     = bg,
+                        receptor = v_poly$receptor,
+                        area_wt  = v_poly$area_frx)
+    
     
     receptor_area_fractions <- bind_rows(v_summary, receptor_area_fractions)
     
-    Sys.sleep(0.3)
-      
-  }
+}
+  
+
+  
+  names(receptor_area_fractions) <- c("geoid", "receptor", "area_wt")
   
   # Round
   receptor_area_fractions <- receptor_area_fractions %>% 
                              rowwise() %>% 
-                             mutate(area_wts = list(round(area_wts, 5)))
+                             mutate(area_wt = round(area_wt, 6))
+  
+  # Check every block group has at least one receptor
+  coverage_check <- receptor_area_fractions %>% 
+                    group_by(geoid) %>% 
+                    summarize(count = n())
+  
+  range(coverage_check$count)
+  
+  # Check sums
+  area_check <- receptor_area_fractions %>% 
+                group_by(geoid) %>% 
+                summarize(sum_wt = sum(area_wt, na.rm = T))
+  
+  range(area_check$sum_wt)
   
   # Save
-  save(receptor_area_fractions, file = "data/receptor_area_fractions.rdata")
+  save(receptor_area_fractions, file = "data/receptor_bg_areas_rounded.rdata")
   
 }
 

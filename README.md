@@ -41,7 +41,7 @@ kable(head(all_receptors))
 
 __Load a single block group's receptors__  
 ```r
-points <- receptors(bg_id = c(271090017012))
+points <- get_receptors(bg_id = c(271090017012))
 
 plot(points$lat, points$long, pch = 16)
 
@@ -57,7 +57,7 @@ kable(head(points))
 
 __Block group Census 2010 data__  
 ```r
-bg_census <- bg_data()
+bg_census <- get_blockgroups()
 
 kable(head(bg_census))
 
@@ -102,21 +102,32 @@ setwd("X:/Agency_Files/Outcomes/Risk_Eval_Air_Mod/_Air_Risk_Evaluation/Staff Fol
 
 df <- read_csv("data\\onRoad - Inhalation - DieselPM risk ratio.csv")
 
+names(df)[7] <- "Inhalation Cancer Risk"
+
+
 # For a single pollutant
 chrysene <- filter(df, `COPC Name` == "Chrysene")
 
-names(chrysene)[7] <- "Inhalation Cancer Risk"
-
-bg_avg <- chrysene %>% spatial_bg_avg(values   = "Inhalation Cancer Risk", 
-                                      receptor = "Receptor")
-
-# Write loop for multiple pollutants
-#...
-#...
-
+bg_avg <- chrysene %>% 
+          group_by(`Block Group`) %>%
+          summarize(avg_inh_cancer_risk = spatial_bg_avg(values       = chrysene$`Inhalation Cancer Risk`, 
+                                                         receptors    = chrysene$Receptor,
+                                                         bg_geoids    = `Block Group`,
+                                                         results_only = TRUE))
 
 kable(head(arrange(bg_avg, -sum_of_area_wts)))
 
+
+# For multiple pollutants
+bg_avg <- df %>% 
+          group_by(`Block Group`, `COPC Name`) %>%
+          summarize(Pollutant = `COPC Name`[1],
+                    avg_inh_cancer_risk = spatial_bg_avg(values       = filter(df, `COPC Name` == Pollutant)$`Inhalation Cancer Risk`, 
+                                                         receptors    = filter(df, `COPC Name` == Pollutant)$Receptor,
+                                                         bg_geoids    = `Block Group`,
+                                                         results_only = TRUE))
+                                                         
+kable(head(bg_avg))
 ```
 
 |geoid        | sum_of_area_wts| bg_avg_Inhalation Cancer Risk|
@@ -127,6 +138,10 @@ kable(head(arrange(bg_avg, -sum_of_area_wts)))
 |270530059012 |          0.0122|                         1e-07|
 |270531261001 |          0.0094|                         1e-07|
 |270531261003 |          0.0001|                         1e-07|
+
+
+
+
 
 
 ## 4. Add data

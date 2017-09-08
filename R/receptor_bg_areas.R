@@ -15,7 +15,7 @@
 receptor_bg_areas <- function(bg_id = NULL) {
   
   # Load receptor fraction data frame
-  recept_df <- get(data("receptor_bg_areas", envir = environment()))
+  recept_df <- get(data("receptor_bg_areas_rounded", envir = environment()))
   
   if(!is.null(bg_id)) recept_df <- subset(recept_df, geoid %in% bg_id)
   
