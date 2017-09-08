@@ -147,7 +147,6 @@ kable(head(bg_avg))
 ## 4. Add data
 
 ```r
-setwd("X:/Agency_Files/Outcomes/Risk_Eval_Air_Mod/_Air_Risk_Evaluation/Staff Folders/Dorian/Mnrisks/R/mnrisks2011")
 
 save(new_data, file = "data/new_data.rdata")
 

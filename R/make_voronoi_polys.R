@@ -216,26 +216,26 @@ make_voronoi_polys <- function() {
   names(receptor_area_fractions) <- c("geoid", "receptor", "area_wt")
   
   # Round
-  receptor_area_fractions <- receptor_area_fractions %>% 
+  receptor_bg_areas_rounded <- receptor_area_fractions %>% 
                              rowwise() %>% 
                              mutate(area_wt = round(area_wt, 6))
   
   # Check every block group has at least one receptor
-  coverage_check <- receptor_area_fractions %>% 
+  coverage_check <- receptor_bg_areas_rounded %>% 
                     group_by(geoid) %>% 
                     summarize(count = n())
   
   range(coverage_check$count)
   
   # Check sums
-  area_check <- receptor_area_fractions %>% 
+  area_check <- receptor_bg_areas_rounded %>% 
                 group_by(geoid) %>% 
                 summarize(sum_wt = sum(area_wt, na.rm = T))
   
   range(area_check$sum_wt)
   
   # Save
-  save(receptor_area_fractions, file = "data/receptor_bg_areas_rounded.rdata")
+  save(receptor_bg_areas_rounded, file = "data/receptor_bg_areas_rounded.rdata")
   
 }
 
