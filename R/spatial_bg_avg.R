@@ -43,7 +43,7 @@ spatial_bg_avg <- function(values       = NULL,
   
 
   #-- Set area weight of missing receptors to zero
-  rec_frx$area_wts   <- ifelse(is.na(rec_frx$mean_value), 0, rec_frx$area_wt)
+  rec_frx$area_wt <- ifelse(is.na(rec_frx$mean_value), 0, rec_frx$area_wt)
   
  
   #-- Calculate weighted block group averages using area fractions
@@ -54,9 +54,7 @@ spatial_bg_avg <- function(values       = NULL,
     
   #-- Set value of missing block groups to zero
   #bg_avg$value_avg  <- ifelse(is.na(bg_avg$value_avg), 0, bg_avg$value_avg)
-  
-  #-- Set value name back to original w/ bg_avg
-  #names(bg_avg)[grep('value_avg', names(bg_avg))] <- paste0("bg_avg_", values)
+
   
   #-- If results_only is True, return mean_value column as vector
   if(results_only) return(bg_avg$mean_value)

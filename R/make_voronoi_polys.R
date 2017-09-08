@@ -75,8 +75,9 @@ make_voronoi_polys <- function() {
   i <- grep(270531093001, bgs$GEOID)
   i <- grep(271617902003, bgs$GEOID)
   i <- grep(270717905003, bgs$GEOID)
+  i <- grep(270531039002, bgs$GEOID)
 
-
+  
 
   
   # Blank table for receptor fractions
