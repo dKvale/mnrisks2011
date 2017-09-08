@@ -14,7 +14,7 @@
 # 
 # 
 spatial_bg_avg <- function(values       = NULL,
-                           receptors    = "receptor",
+                           receptors    = NULL,
                            bg_geoids    = NULL,
                            results_only = FALSE) {
   

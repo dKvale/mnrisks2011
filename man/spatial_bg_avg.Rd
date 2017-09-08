@@ -4,7 +4,7 @@
 \alias{spatial_bg_avg}
 \title{spatial_bg_avg}
 \usage{
-spatial_bg_avg(values = NULL, receptors = "receptor", bg_geoids = NULL,
+spatial_bg_avg(values = NULL, receptors = NULL, bg_geoids = NULL,
   results_only = FALSE)
 }
 \arguments{

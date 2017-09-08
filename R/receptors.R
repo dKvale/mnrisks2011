@@ -1,4 +1,4 @@
-#' get_receptors
+#' receptors
 #'
 #' MNRISKS 2011 modeled receptors 
 #' @param bg_id Block group IDs to include. Default includes all.
@@ -9,10 +9,10 @@
 #' points <- get_receptors()
 #' 
 #' #For selected block groups
-#' points <- get_receptors(bg_id = c(271090017012))
+#' points <- receptors(bg_id = c(271090017012))
 # 
 
-get_receptors <- function(bg_id = NULL) {
+receptors <- function(bg_id = NULL) {
   
   # Load receptors data frame
   recept_df <- get(data("receptors", envir = environment()))

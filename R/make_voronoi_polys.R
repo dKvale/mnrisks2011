@@ -63,7 +63,7 @@ make_voronoi_polys <- function() {
   bg_neighbors <- st_touches(bgs)
   
   # Load receptors
-  receptors <- receptors()
+  receptors <- get_receptors()
  
   # For missing block group: 271090017024
   bg <- bgs$GEOID[1]

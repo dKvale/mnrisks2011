@@ -13,8 +13,8 @@ read_rsk(file, scenarios = NULL)
 MNRISKS 2011 modeled receptors
 }
 \examples{
-\dontrun {
-# Read in a single .rsk file
+\dontrun{
+#Read in a single .rsk file
 acrolein <- read_rsk("acrolein_resuls.rsk")
 }
 }

@@ -4,8 +4,9 @@
 #' @param file Path to .rsk file
 #' @keywords rsk results mnrisks
 #' @export
-#' @examples \dontrun {
-#' # Read in a single .rsk file
+#' @examples 
+#' \dontrun{
+#' #Read in a single .rsk file
 #' acrolein <- read_rsk("acrolein_resuls.rsk")
 #' }
 # 
