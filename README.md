@@ -1,4 +1,4 @@
-# mnrisks
+# mnrisks2011
 Helper functions and data from Minnesota's 2011 NEI air modeling results.  
 
 
